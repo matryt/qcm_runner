@@ -17,6 +17,34 @@
             background: #f5f5f5;
             border-radius: 5px;
         }
+
+        .import-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .file-status {
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+
+        .success {
+            color: #28a745;
+        }
+
+        .format-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
         
         .quiz-container {
             display: none;
@@ -95,6 +123,7 @@
             justify-content: center;
             margin-top: 10px;
             gap: 5px;
+            flex-wrap: wrap;
         }
 
         .question-nav button {
@@ -116,7 +145,15 @@
         <h2>Chargez votre fichier CSV</h2>
         <p>Format attendu: question,option1,option2,option3,option4,réponses_correctes</p>
         <p>Note: Pour les réponses correctes multiples, séparez-les par des points-virgules</p>
-        <input type="file" id="csvFile" accept=".csv">
+        <div class="import-controls">
+            <input type="file" id="csvFile" accept=".csv">
+            <button id="validateImport">Valider l'import</button>
+        </div>
+        <div id="fileStatus" class="file-status"></div>
+        <div id="formatPreview" class="format-preview" style="display: none;">
+            <h4>Aperçu du format détecté :</h4>
+            <pre id="formatPreviewContent"></pre>
+        </div>
     </div>
 
     <div class="config-section">
@@ -149,35 +186,119 @@
         let questionScores = [];
         let pointsPerCorrectAnswer = 0;
 
-        document.getElementById('csvFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
+        function validateCSVFormat(csvData) {
+            const lines = csvData.trim().split('\n');
+            const errors = [];
+            const questions = [];
+
+            if (lines.length < 1) {
+                throw new Error('Le fichier est vide');
+            }
+
+            lines.forEach((line, index) => {
+                if (!line.trim()) return; // Ignorer les lignes vides
+
+                const parts = line.split(',').map(part => part.trim());
+                
+                // Vérifications de base
+                if (parts.length < 3) {
+                    errors.push(`Ligne ${index + 1}: Pas assez de colonnes (minimum: question, une option, réponses)`);
+                    return;
+                }
+
+                const question = parts[0];
+                const correctAnswersStr = parts[parts.length - 1];
+                const options = parts.slice(1, -1);
+                const correctAnswers = correctAnswersStr.split(';').map(ans => ans.trim());
+
+                // Vérifications détaillées
+                if (question.length < 3) {
+                    errors.push(`Ligne ${index + 1}: Question trop courte`);
+                }
+
+                if (options.length < 2) {
+                    errors.push(`Ligne ${index + 1}: Il faut au moins 2 options de réponse`);
+                }
+
+                if (correctAnswers.length < 1) {
+                    errors.push(`Ligne ${index + 1}: Aucune réponse correcte spécifiée`);
+                }
+
+                // Vérifier que les réponses correctes correspondent aux options
+                correctAnswers.forEach(answer => {
+                    if (!options.includes(answer)) {
+                        errors.push(`Ligne ${index + 1}: La réponse correcte "${answer}" ne correspond à aucune option`);
+                    }
+                });
+
+                // Vérifier les doublons dans les options
+                const uniqueOptions = new Set(options);
+                if (uniqueOptions.size !== options.length) {
+                    errors.push(`Ligne ${index + 1}: Options en double détectées`);
+                }
+
+                questions.push({
+                    question,
+                    options,
+                    correctAnswers
+                });
+            });
+
+            if (errors.length > 0) {
+                throw new Error('Erreurs de format détectées:\n' + errors.join('\n'));
+            }
+
+            return questions;
+        }
+
+        // Gestion de l'import du fichier
+        document.getElementById('validateImport').addEventListener('click', function() {
+            const file = document.getElementById('csvFile').files[0];
+            if (!file) {
+                alert('Veuillez sélectionner un fichier CSV');
+                return;
+            }
+
             const reader = new FileReader();
-            
             reader.onload = function(event) {
-                const csvData = event.target.result;
-                parseCSV(csvData);
+                try {
+                    const csvData = event.target.result;
+                    questions = validateCSVFormat(csvData);
+                    
+                    // Afficher l'aperçu du format
+                    const preview = questions.map(q => ({
+                        question: q.question,
+                        nbOptions: q.options.length,
+                        nbCorrectAnswers: q.correctAnswers.length
+                    }));
+                    
+                    document.getElementById('formatPreview').style.display = 'block';
+                    document.getElementById('formatPreviewContent').textContent = 
+                        `${questions.length} questions détectées\n` +
+                        JSON.stringify(preview, null, 2);
+
+                    document.getElementById('fileStatus').innerHTML = 
+                        '<span class="success">✓ Format valide ! Le quiz est prêt.</span>';
+                    
+                    initializeQuiz();
+                    
+                    document.getElementById('validateImport').disabled = true;
+                    document.getElementById('csvFile').disabled = true;
+
+                } catch (error) {
+                    document.getElementById('fileStatus').innerHTML = 
+                        `<span class="error">✗ ${error.message}</span>`;
+                    document.getElementById('quizContainer').style.display = 'none';
+                }
+            };
+            
+            reader.onerror = function() {
+                document.getElementById('fileStatus').innerHTML = 
+                    '<span class="error">✗ Erreur lors de la lecture du fichier</span>';
             };
             
             reader.readAsText(file);
         });
-
-        function parseCSV(csv) {
-            const lines = csv.split('\n');
-            questions = lines.map(line => {
-                const [question, ...options] = line.split(',').map(item => item.trim());
-                const correctAnswersStr = options.pop();
-                const correctAnswers = correctAnswersStr.split(';').map(ans => ans.trim());
-                return {
-                    question,
-                    options: options.filter(opt => opt !== ''),
-                    correctAnswers
-                };
-            }).filter(q => q.question && q.options.length > 0);
-
-            if (questions.length > 0) {
-                initializeQuiz();
-            }
-        }
 
         function initializeQuiz() {
             document.getElementById('quizContainer').style.display = 'block';
