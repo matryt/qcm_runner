@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz CSV - Multi-réponses</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .file-input, .config-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        
+        .quiz-container {
+            display: none;
+        }
+        
+        .question {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .options {
+            margin-top: 10px;
+        }
+        
+        .option {
+            margin: 5px 0;
+        }
+        
+        .feedback {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .correct {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        
+        .incorrect {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .score {
+            font-size: 1.2em;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .config-section label {
+            display: block;
+            margin: 10px 0;
+        }
+
+        .question-nav {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 5px;
+        }
+
+        .question-nav button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+
+        .current {
+            background-color: #28a745;
+        }
+
+        .attempted {
+            background-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="file-input">
+        <h2>Chargez votre fichier CSV</h2>
+        <p>Format attendu: question,option1,option2,option3,option4,réponses_correctes</p>
+        <p>Note: Pour les réponses correctes multiples, séparez-les par des points-virgules</p>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
+
+    <div class="config-section">
+        <h3>Configuration du quiz</h3>
+        <label>
+            Points totaux pour le quiz :
+            <input type="number" id="totalPoints" value="20" min="1">
+        </label>
+        <label>
+            Pénalité pour mauvaise réponse (en points) :
+            <input type="number" id="penalty" value="0.5" min="0" step="0.5">
+        </label>
+    </div>
+
+    <div id="quizContainer" class="quiz-container">
+        <div id="questionContainer"></div>
+        <div class="navigation">
+            <button id="prevBtn">Question précédente</button>
+            <button id="submitBtn">Valider la réponse</button>
+            <button id="nextBtn">Question suivante</button>
+        </div>
+        <div id="questionNav" class="question-nav"></div>
+        <div class="score" id="score"></div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentQuestion = 0;
+        let userAnswers = [];
+        let questionScores = [];
+        let pointsPerCorrectAnswer = 0;
+
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const csvData = event.target.result;
+                parseCSV(csvData);
+            };
+            
+            reader.readAsText(file);
+        });
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            questions = lines.map(line => {
+                const [question, ...options] = line.split(',').map(item => item.trim());
+                const correctAnswersStr = options.pop();
+                const correctAnswers = correctAnswersStr.split(';').map(ans => ans.trim());
+                return {
+                    question,
+                    options: options.filter(opt => opt !== ''),
+                    correctAnswers
+                };
+            }).filter(q => q.question && q.options.length > 0);
+
+            if (questions.length > 0) {
+                initializeQuiz();
+            }
+        }
+
+        function initializeQuiz() {
+            document.getElementById('quizContainer').style.display = 'block';
+            userAnswers = new Array(questions.length).fill(null).map(() => []);
+            questionScores = new Array(questions.length).fill(null);
+            updateQuestionNav();
+            showQuestion();
+            calculatePointsPerAnswer();
+        }
+
+        function calculatePointsPerAnswer() {
+            const totalPoints = parseFloat(document.getElementById('totalPoints').value);
+            const totalCorrectAnswers = questions.reduce((sum, q) => sum + q.correctAnswers.length, 0);
+            pointsPerCorrectAnswer = totalPoints / totalCorrectAnswers;
+        }
+
+        function showQuestion() {
+            const q = questions[currentQuestion];
+            const container = document.getElementById('questionContainer');
+            
+            container.innerHTML = `
+                <div class="question">
+                    <h3>Question ${currentQuestion + 1}/${questions.length}</h3>
+                    <p>${q.question}</p>
+                    <p><i>Plusieurs réponses peuvent être correctes</i></p>
+                    <div class="options">
+                        ${q.options.map((opt, index) => `
+                            <div class="option">
+                                <input type="checkbox" name="answer" value="${opt}" id="opt${index}"
+                                    ${userAnswers[currentQuestion].includes(opt) ? 'checked' : ''}>
+                                <label for="opt${index}">${opt}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="feedback" id="feedback"></div>
+                </div>
+            `;
+
+            updateNavigationButtons();
+        }
+
+        function updateNavigationButtons() {
+            document.getElementById('prevBtn').disabled = currentQuestion === 0;
+            document.getElementById('nextBtn').disabled = currentQuestion === questions.length - 1;
+        }
+
+        function updateQuestionNav() {
+            const nav = document.getElementById('questionNav');
+            nav.innerHTML = questions.map((_, index) => `
+                <button onclick="goToQuestion(${index})" 
+                    class="${getQuestionButtonClass(index)}">
+                    ${index + 1}
+                </button>
+            `).join('');
+        }
+
+        function getQuestionButtonClass(index) {
+            if (index === currentQuestion) return 'current';
+            if (userAnswers[index] && userAnswers[index].length > 0) return 'attempted';
+            return '';
+        }
+
+        function goToQuestion(index) {
+            currentQuestion = index;
+            showQuestion();
+            updateQuestionNav();
+        }
+
+        document.getElementById('prevBtn').addEventListener('click', function() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                showQuestion();
+                updateQuestionNav();
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', function() {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                showQuestion();
+                updateQuestionNav();
+            }
+        });
+
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            const selectedAnswers = Array.from(document.querySelectorAll('input[name="answer"]:checked'))
+                .map(input => input.value);
+
+            if (selectedAnswers.length === 0) {
+                alert('Veuillez sélectionner au moins une réponse');
+                return;
+            }
+
+            const currentQ = questions[currentQuestion];
+            userAnswers[currentQuestion] = selectedAnswers;
+
+            const feedback = document.getElementById('feedback');
+            const correctAnswers = new Set(currentQ.correctAnswers);
+            const userAnswerSet = new Set(selectedAnswers);
+            
+            let score = 0;
+            const penalty = parseFloat(document.getElementById('penalty').value);
+
+            // Calculer les points pour les bonnes réponses
+            selectedAnswers.forEach(answer => {
+                if (correctAnswers.has(answer)) {
+                    score += pointsPerCorrectAnswer;
+                } else {
+                    score -= penalty;
+                }
+            });
+
+            // Pénaliser les réponses correctes manquées
+            currentQ.correctAnswers.forEach(answer => {
+                if (!userAnswerSet.has(answer)) {
+                    score -= penalty;
+                }
+            });
+
+            score = Math.max(0, score); // Empêcher un score négatif
+            questionScores[currentQuestion] = score;
+
+            // Afficher le feedback
+            feedback.innerHTML = `
+                Score pour cette question : ${score.toFixed(2)} points<br>
+                Réponses correctes : ${Array.from(correctAnswers).join(', ')}
+            `;
+            feedback.className = 'feedback ' + (score > 0 ? 'correct' : 'incorrect');
+            feedback.style.display = 'block';
+
+            updateQuestionNav();
+            updateTotalScore();
+        });
+
+        function updateTotalScore() {
+            const totalScore = questionScores.reduce((sum, score) => sum + (score || 0), 0);
+            const maxPossibleScore = parseFloat(document.getElementById('totalPoints').value);
+            const percentage = (totalScore / maxPossibleScore) * 100;
+            
+            document.getElementById('score').innerHTML = `
+                Score actuel : ${totalScore.toFixed(2)}/${maxPossibleScore} (${percentage.toFixed(1)}%)
+            `;
+        }
+    </script>
+</body>
+</html>
