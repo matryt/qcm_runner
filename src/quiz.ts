@@ -19,6 +19,8 @@ export function initializeQuiz(quizQuestions: Question[]): void {
     updateTotalScore();
 }
 
+
+
 function calculatePointsPerAnswer(): void {
     const totalPoints = parseFloat((document.getElementById('totalPoints') as HTMLInputElement).value);
     const totalCorrectAnswers = questions.reduce((sum, q) => sum + q.correctAnswers.length, 0);
