@@ -135,7 +135,7 @@ export function submitAnswer() {
     questionScores[currentQuestion] = score;
     let stateType = QuestionState.INCORRECT;
     let infoFeedback = '';
-    if (correctAnswersFromUser === currentQ.correctAnswers.length) {
+    if (correctAnswersFromUser === currentQ.correctAnswers.length && correctAnswersFromUser === selectedAnswers.length) {
         infoFeedback = "Correct";
         stateType = QuestionState.CORRECT;
     }

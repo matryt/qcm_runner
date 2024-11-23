@@ -11,10 +11,8 @@ export function validateCSVFormat(csvData: string): Question[] {
 
     lines.forEach((line, index) => {
         if (!line.trim()) return;
-        console.log(line);
 
         const parts = line.split(/,(?=[a-zA-Z0-9])/).map(part => part.trim());
-        console.log(parts);
 
         if (parts.length < 3) {
             errors.push(`Ligne ${index + 1}: Pas assez de colonnes (minimum: question, une option, réponses)`);

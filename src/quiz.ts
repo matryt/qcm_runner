@@ -160,7 +160,7 @@ export function submitAnswer(): void {
     let stateType = QuestionState.INCORRECT;
 
     let infoFeedback = '';
-    if (correctAnswersFromUser === currentQ.correctAnswers.length) {
+    if (correctAnswersFromUser === currentQ.correctAnswers.length && correctAnswersFromUser === selectedAnswers.length) {
         infoFeedback = "Correct";
         stateType = QuestionState.CORRECT;
     } else if (correctAnswersFromUser > 0) {
