@@ -1,17 +1,27 @@
-import { Question } from './question';
-import {QuestionState} from './questionState';
+import {QuestionState} from "./questionState";
+import {Question} from "./question";
 
-let questions: Question[] = [];
-let currentQuestion: number = 0;
-let userAnswers: string[][] = [];
-let questionScores: number[] = [];
-let pointsPerCorrectAnswer: number = 0;
-let questionStates: QuestionState[] = [];
+interface QuizSession {
+    questions: Question[];
+    answers: {
+        userAnswers: string[];
+        score: number | null;
+        state: QuestionState | null;
+    }[];
+    currentIndex: number;
+    pointsPerCorrectAnswer: number;
+}
+
+let session: QuizSession = {
+    questions: [],
+    answers: [],
+    currentIndex: 0,
+    pointsPerCorrectAnswer: 0
+};
 
 export function initializeQuiz(quizQuestions: Question[]): void {
-    questions = quizQuestions;
-    userAnswers = new Array(questions.length).fill(null).map(() => []);
-    questionScores = new Array(questions.length).fill(null);
+    session.questions = quizQuestions;
+    session.answers = quizQuestions.map(() => ({ userAnswers: [], score: null, state: null }));
     updateQuestionNav();
     showQuestion();
     calculatePointsPerAnswer();
@@ -19,28 +29,26 @@ export function initializeQuiz(quizQuestions: Question[]): void {
     updateTotalScore();
 }
 
-
-
 function calculatePointsPerAnswer(): void {
     const totalPoints = parseFloat((document.getElementById('totalPoints') as HTMLInputElement).value);
-    const totalCorrectAnswers = questions.reduce((sum, q) => sum + q.correctAnswers.length, 0);
-    pointsPerCorrectAnswer = totalPoints / totalCorrectAnswers;
+    const totalCorrectAnswers = session.questions.reduce((sum, q) => sum + q.correctAnswers.length, 0);
+    session.pointsPerCorrectAnswer = totalPoints / totalCorrectAnswers;
 }
 
 function showQuestion(): void {
-    const q = questions[currentQuestion];
+    const q = session.questions[session.currentIndex];
     const container = document.getElementById('questionContainer')!;
 
     container.innerHTML = `
     <div class="question">
-      <h3>Question ${currentQuestion + 1}/${questions.length}</h3>
+      <h3>Question ${session.currentIndex + 1}/${session.questions.length}</h3>
       <p>${q.question}</p>
       ${q.correctAnswers.length > 1 ? '<p class="multiple-info">(Sélectionnez toutes les réponses correctes)</p>' : ''}
       <div class="options">
-        ${q.options.map((opt, index) => `
+        ${q.options.map((opt: string, index: any) => `
           <div class="option">
             <input type="checkbox" name="answer" value="${opt}" id="opt${index}"
-              ${userAnswers[currentQuestion].includes(opt) ? 'checked' : ''}>
+              ${session.answers[session.currentIndex].userAnswers.includes(opt) ? 'checked' : ''}>
             <label for="opt${index}">${opt}</label>
           </div>
         `).join('')}
@@ -49,8 +57,7 @@ function showQuestion(): void {
     </div>
   `;
 
-    // Disable answer options if the question has already been answered
-    if (userAnswers[currentQuestion].length > 0) {
+    if (session.answers[session.currentIndex].userAnswers.length > 0) {
         document.querySelectorAll('input[name="answer"]').forEach(input => {
             (input as HTMLInputElement).disabled = true;
         });
@@ -60,18 +67,18 @@ function showQuestion(): void {
 }
 
 function updateNavigationButtons(): void {
-    (document.getElementById('prevBtn') as HTMLButtonElement).disabled = currentQuestion === 0;
-    (document.getElementById('nextBtn') as HTMLButtonElement).disabled = currentQuestion === questions.length - 1;
-    (document.getElementById('finishBtn') as HTMLButtonElement).classList.toggle('notDisplayed', currentQuestion !== questions.length - 1);
+    (document.getElementById('prevBtn') as HTMLButtonElement).disabled = session.currentIndex === 0;
+    (document.getElementById('nextBtn') as HTMLButtonElement).disabled = session.currentIndex === session.questions.length - 1;
+    (document.getElementById('finishBtn') as HTMLButtonElement).classList.toggle('notDisplayed', session.currentIndex !== session.questions.length - 1);
 }
 
 function updateQuestionNav(): void {
     const nav = document.getElementById('questionNav')!;
-    nav.innerHTML = questions.map((_, index) => `
-        <button class="${getQuestionButtonClass(index)}" data-index="${index}">
-            ${index + 1}
-        </button>
-    `).join('');
+    nav.innerHTML = session.questions.map((_, index) => `
+    <button class="${getQuestionButtonClass(index)}" data-index="${index}">
+      ${index + 1}
+    </button>
+  `).join('');
 
     nav.querySelectorAll('button').forEach(button => {
         button.addEventListener('click', () => {
@@ -82,9 +89,9 @@ function updateQuestionNav(): void {
 }
 
 function getQuestionButtonClass(index: number): string {
-    if (index === currentQuestion) return 'current-button-page';
-    if (userAnswers[index] && userAnswers[index].length > 0) {
-        const state = questionStates[index];
+    if (index === session.currentIndex) return 'current-button-page';
+    if (session.answers[index].userAnswers.length > 0) {
+        const state = session.answers[index].state;
         switch (state) {
             case QuestionState.CORRECT:
                 return 'correct-button-page';
@@ -98,69 +105,69 @@ function getQuestionButtonClass(index: number): string {
 }
 
 function goToQuestion(index: number): void {
-    currentQuestion = index;
+    session.currentIndex = index;
     showQuestion();
     updateQuestionNav();
 }
 
 export function showPreviousQuestion(): void {
-    if (currentQuestion > 0) {
-        currentQuestion--;
+    if (session.currentIndex > 0) {
+        session.currentIndex--;
         showQuestion();
         updateQuestionNav();
     }
 }
 
 export function showNextQuestion(): void {
-    if (currentQuestion < questions.length - 1) {
-        currentQuestion++;
+    if (session.currentIndex < session.questions.length - 1) {
+        session.currentIndex++;
         showQuestion();
         updateQuestionNav();
     }
 }
 
 export function submitAnswer(): void {
-    const selectedAnswers = Array.from(document.querySelectorAll('input[name="answer"]:checked'))
+    const current = session.answers[session.currentIndex];
+    const question = session.questions[session.currentIndex];
+
+    current.userAnswers = Array.from(document.querySelectorAll('input[name="answer"]:checked'))
         .map(input => (input as HTMLInputElement).value);
 
-    if (selectedAnswers.length === 0) {
+    if (current.userAnswers.length === 0) {
         alert('Veuillez sélectionner au moins une réponse');
         return;
     }
 
-    const currentQ = questions[currentQuestion];
-    userAnswers[currentQuestion] = selectedAnswers;
-
     const feedback = document.getElementById('feedback')!;
-    const correctAnswers = new Set(currentQ.correctAnswers);
-    const userAnswerSet = new Set(selectedAnswers);
+    const correctAnswers = new Set(question.correctAnswers);
+    const userAnswerSet = new Set(current.userAnswers);
 
     let score = 0;
     const penalty = parseFloat((document.getElementById('penalty') as HTMLInputElement).value);
     let correctAnswersFromUser = 0;
 
-    selectedAnswers.forEach(answer => {
+    current.userAnswers.forEach(answer => {
         if (correctAnswers.has(answer)) {
-            score += pointsPerCorrectAnswer;
+            score += session.pointsPerCorrectAnswer;
             correctAnswersFromUser++;
         } else {
             score -= penalty;
         }
     });
 
-    currentQ.correctAnswers.forEach(answer => {
+    question.correctAnswers.forEach((answer: string) => {
         if (!userAnswerSet.has(answer)) {
             score -= penalty;
         }
     });
 
     score = Math.max(0, score);
-    questionScores[currentQuestion] = score;
+    current.score = score;
 
     let stateType = QuestionState.INCORRECT;
 
     let infoFeedback = '';
-    if (correctAnswersFromUser === currentQ.correctAnswers.length && correctAnswersFromUser === selectedAnswers.length) {
+    if (correctAnswersFromUser === question.correctAnswers.length && correctAnswersFromUser === current.userAnswers.length) {
         infoFeedback = "Correct";
         stateType = QuestionState.CORRECT;
     } else if (correctAnswersFromUser > 0) {
@@ -170,7 +177,7 @@ export function submitAnswer(): void {
         infoFeedback = "Incorrect";
     }
 
-    questionStates[currentQuestion] = stateType;
+    current.state = stateType;
 
     feedback.innerHTML = `
     ${infoFeedback}<br>
@@ -180,7 +187,6 @@ export function submitAnswer(): void {
     feedback.className = 'feedback ' + getFeedbackClass(stateType);
     feedback.classList.remove('notDisplayed');
 
-    // Disable answer options
     document.querySelectorAll('input[name="answer"]').forEach(input => {
         (input as HTMLInputElement).disabled = true;
     });
@@ -190,7 +196,7 @@ export function submitAnswer(): void {
 }
 
 function updateTotalScore(): void {
-    const totalScore = questionScores.reduce((sum, score) => sum + (score || 0), 0);
+    const totalScore = session.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
     const maxPossibleScore = parseFloat((document.getElementById('totalPoints') as HTMLInputElement).value);
     const percentage = (totalScore / maxPossibleScore) * 100;
 
@@ -200,30 +206,30 @@ function updateTotalScore(): void {
 }
 
 export function finishQuiz(): void {
-    const totalScore = questionScores.reduce((sum, score) => sum + (score || 0), 0);
+    const totalScore = session.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
     const maxPossibleScore = parseFloat((document.getElementById('totalPoints') as HTMLInputElement).value);
     const percentage = (totalScore / maxPossibleScore) * 100;
 
     const feedbackContainer = document.getElementById('quizFeedback')!;
     feedbackContainer.innerHTML = `
-        <h2>Feedback du Quiz</h2>
-        <p>Score total : ${totalScore.toFixed(2)}/${maxPossibleScore} (${percentage.toFixed(1)}%)</p>
-        <div class="feedback-questions">
-            ${questions.map((q, index) => `
-                <div class="feedback-question">
-                    <button class="feedback-question-toggle" data-index="${index}">
-                        &#9654; Question ${index + 1}: ${q.question}
-                    </button>
-                    <div class="feedback-question-details notDisplayed" id="feedback-details-${index}">
-                        <p>Vos réponses : ${userAnswers[index].join(', ')}</p>
-                        <p>Réponses correctes : ${q.correctAnswers.join(', ')}</p>
-                        <p>Score : ${questionScores[index]?.toFixed(2) || 0}/${(q.correctAnswers.length * pointsPerCorrectAnswer).toFixed(2)}</p>
-                    </div>
-                </div>
-            `).join('')}
+    <h2>Feedback du Quiz</h2>
+    <p>Score total : ${totalScore.toFixed(2)}/${maxPossibleScore} (${percentage.toFixed(1)}%)</p>
+    <div class="feedback-questions">
+      ${session.questions.map((q, index) => `
+        <div class="feedback-question">
+          <button class="feedback-question-toggle" data-index="${index}">
+            &#9654; Question ${index + 1}: ${q.question}
+          </button>
+          <div class="feedback-question-details notDisplayed" id="feedback-details-${index}">
+            <p>Vos réponses : ${session.answers[index].userAnswers.join(', ')}</p>
+            <p>Réponses correctes : ${q.correctAnswers.join(', ')}</p>
+            <p>Score : ${session.answers[index].score?.toFixed(2) || 0}/${(q.correctAnswers.length * session.pointsPerCorrectAnswer).toFixed(2)}</p>
+          </div>
         </div>
-        <p>Merci d'avoir participé au quiz !</p>
-    `;
+      `).join('')}
+    </div>
+    <p>Merci d'avoir participé au quiz !</p>
+  `;
     feedbackContainer.classList.remove('notDisplayed');
 
     document.querySelectorAll('.feedback-question-toggle').forEach(button => {
@@ -232,8 +238,8 @@ export function finishQuiz(): void {
             const details = document.getElementById(`feedback-details-${index}`)!;
             details.classList.toggle('notDisplayed');
             button.innerHTML = details.classList.contains('notDisplayed')
-                ? `&#9654; Question ${index + 1}: ${questions[index].question}`
-                : `&#9660; Question ${index + 1}: ${questions[index].question}`;
+                ? `&#9654; Question ${index + 1}: ${session.questions[index].question}`
+                : `&#9660; Question ${index + 1}: ${session.questions[index].question}`;
         });
     });
 }
