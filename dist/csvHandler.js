@@ -9,13 +9,17 @@ export function validateCSVFormat(csvData) {
         if (!line.trim())
             return;
         const parts = line.split(/,(?=[a-zA-Z0-9])/).map(part => part.trim());
-        if (parts.length < 3) {
-            errors.push(`Ligne ${index + 1}: Pas assez de colonnes (minimum: question, une option, réponses)`);
+        if (parts.length < 4) {
+            errors.push(`Ligne ${index + 1}: Pas assez de colonnes (minimum: question, une option, réponses, url_image)`);
             return;
         }
         const question = parts[0];
-        const correctAnswersStr = parts[parts.length - 1];
-        const options = parts.slice(1, -1);
+        const correctAnswersStr = parts[parts.length - 2];
+        let imageUrl = parts[parts.length - 1] || null;
+        if (imageUrl == "none") {
+            imageUrl = null;
+        }
+        const options = parts.slice(1, -2);
         const correctAnswers = correctAnswersStr.split(';').map(ans => ans.trim());
         if (question.length < 3) {
             errors.push(`Ligne ${index + 1}: Question trop courte`);
@@ -38,7 +42,8 @@ export function validateCSVFormat(csvData) {
         questions.push({
             question,
             options,
-            correctAnswers
+            correctAnswers,
+            imageUrl
         });
     });
     if (errors.length > 0) {

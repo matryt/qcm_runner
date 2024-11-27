@@ -190,3 +190,16 @@ button:disabled {
     border-radius: 5px;
     margin-top: 5px;
 }
+
+.image-quiz {
+    width: 500px;
+}
+
+.img-container {
+    display: flex;
+    justify-content: center;
+}
+
+.notDisplayed {
+    display: none;
+}
