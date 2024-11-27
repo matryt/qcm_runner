@@ -26,6 +26,9 @@ function showQuestion() {
     <div class="question">
       <h3>Question ${session.currentIndex + 1}/${session.questions.length}</h3>
       <p>${q.question}</p>
+      <div class="img-container ${!q.imageUrl ? 'notDisplayed' : ''}">
+        ${q.imageUrl ? `<img src="${q.imageUrl}" class="image-quiz" alt="Image pour la question">` : ''}
+      </div>
       ${q.correctAnswers.length > 1 ? '<p class="multiple-info">(Sélectionnez toutes les réponses correctes)</p>' : ''}
       <div class="options">
         ${q.options.map((opt, index) => `
