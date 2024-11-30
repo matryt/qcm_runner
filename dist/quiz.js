@@ -19,9 +19,18 @@ function calculatePointsPerAnswer() {
     const totalCorrectAnswers = session.questions.reduce((sum, q) => sum + q.correctAnswers.length, 0);
     session.pointsPerCorrectAnswer = totalPoints / totalCorrectAnswers;
 }
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 function showQuestion() {
     const q = session.questions[session.currentIndex];
     const container = document.getElementById('questionContainer');
+    // Shuffle options
+    const shuffledOptions = shuffleArray([...q.options]);
     container.innerHTML = `
     <div class="question">
       <h3>Question ${session.currentIndex + 1}/${session.questions.length}</h3>
@@ -31,9 +40,9 @@ function showQuestion() {
       </div>
       ${q.correctAnswers.length > 1 ? '<p class="multiple-info">(Sélectionnez toutes les réponses correctes)</p>' : ''}
       <div class="options">
-        ${q.options.map((opt, index) => `
+        ${shuffledOptions.map((opt, index) => `
           <div class="option">
-            <input type="checkbox" name="answer" value="${opt}" id="opt${index}"
+            <input type="checkbox" name="answer" value="${encodeURIComponent(opt)}" id="opt${index}"
               ${session.answers[session.currentIndex].userAnswers.includes(opt) ? 'checked' : ''}>
             <label for="opt${index}">${opt}</label>
           </div>
@@ -107,7 +116,7 @@ export function submitAnswer() {
     const current = session.answers[session.currentIndex];
     const question = session.questions[session.currentIndex];
     current.userAnswers = Array.from(document.querySelectorAll('input[name="answer"]:checked'))
-        .map(input => input.value);
+        .map(input => decodeURIComponent(input.value));
     if (current.userAnswers.length === 0) {
         alert('Veuillez sélectionner au moins une réponse');
         return;
