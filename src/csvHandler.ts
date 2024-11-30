@@ -12,12 +12,14 @@ export function validateCSVFormat(csvData: string): Question[] {
     lines.forEach((line, index) => {
         if (!line.trim()) return;
 
-        const parts = line.split(/,(?=[a-zA-Z0-9])/).map(part => part.trim());
+        const parts = line.split(/(?=\S),(?=\S)/).map(part => part.trim());
 
         if (parts.length < 4) {
             errors.push(`Ligne ${index + 1}: Pas assez de colonnes (minimum: question, une option, réponses, url_image)`);
             return;
         }
+
+        console.log(parts);
 
         const question = parts[0];
         const correctAnswersStr = parts[parts.length - 2];
@@ -26,7 +28,10 @@ export function validateCSVFormat(csvData: string): Question[] {
             imageUrl = null;
         }
         const options = parts.slice(1, -2);
-        const correctAnswers = correctAnswersStr.split(';').map(ans => ans.trim());
+
+        // Handle escaped semicolons
+        const correctAnswers = correctAnswersStr.split(/(?<!\\);/).map(ans => ans.replace(/\\;/g, ';').trim());
+
         if (question.length < 3) {
             errors.push(`Ligne ${index + 1}: Question trop courte`);
         }
