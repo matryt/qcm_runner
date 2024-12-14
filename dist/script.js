@@ -2,6 +2,17 @@ import { validateCSVFormat } from './csvHandler.js';
 import { initializeQuiz, showPreviousQuestion, showNextQuestion, submitAnswer, finishQuiz as finish } from './quiz.js';
 let questions = [];
 document.getElementById('validateImport').addEventListener('click', handleFileImport);
+const dropZone = document.querySelector('.drop-zone');
+dropZone.addEventListener('dragover', handleDragOver);
+dropZone.addEventListener('drop', handleFileDrop);
+const fileInput = document.getElementById('csvFile');
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (file) {
+        displayFileName(file.name);
+    }
+});
+dropZone.addEventListener('click', () => fileInput.click());
 document.getElementById('startQuiz').addEventListener('click', startQuiz);
 document.getElementById('prevBtn').addEventListener('click', showPreviousQuestion);
 document.getElementById('nextBtn').addEventListener('click', showNextQuestion);
@@ -19,6 +30,7 @@ function handleFileImport() {
         document.getElementById('fileStatus').innerHTML = `<span class="error">✗ Extension de fichier incorrecte</span>`;
         return;
     }
+    displayFileName(file.name);
     const reader = new FileReader();
     reader.onload = function (event) {
         try {
@@ -28,13 +40,33 @@ function handleFileImport() {
             showStep(2);
         }
         catch (error) {
-            document.getElementById('fileStatus').innerHTML = `<span class="error">✗ ${error.message}</span>`;
+            document.getElementById('errors').innerHTML = `<span class="error">✗ ${error.message}</span>`;
         }
     };
     reader.onerror = function () {
-        document.getElementById('fileStatus').innerHTML = '<span class="error">✗ Erreur lors de la lecture du fichier</span>';
+        document.getElementById('errors').innerHTML = '<span class="error">✗ Erreur lors de la lecture du fichier</span>';
     };
     reader.readAsText(file);
+}
+function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+}
+function handleFileDrop(event) {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (!file.name.endsWith('.csv')) {
+        document.getElementById('fileStatus').innerHTML = `<span class="error">✗ Extension de fichier incorrecte</span>`;
+        return;
+    }
+    const fileInput = document.getElementById('csvFile');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    displayFileName(file.name);
+}
+function displayFileName(fileName) {
+    document.getElementById('fileStatus').innerHTML = `<span class="success">✓ Fichier sélectionné : ${fileName}</span>`;
 }
 function displayFormatPreview() {
     const preview = questions.map((q, index) => ({
