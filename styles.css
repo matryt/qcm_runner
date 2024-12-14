@@ -203,3 +203,58 @@ button:disabled {
 .notDisplayed {
     display: none;
 }
+
+#csvFile {
+    max-width: 190px;
+    display: none;
+}
+
+.drop-zone {
+    width: 300px;
+    height: 150px;
+    border: 2px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #404040;
+    cursor: pointer;
+    margin: 20px 0;
+    flex-direction: column;
+}
+
+.quizFeedback {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.feedback-question {
+    width: 45%;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.feedback-question:hover {
+    background-color: #f0f0f0;
+}
+
+.feedback-question .question-title {
+    font-weight: bold;
+}
+
+.feedback-question .question-score {
+    color: green;
+}
+
+.feedback-question .question-details {
+    display: none;
+    margin-top: 10px;
+}
+
+.feedback-question.open .question-details {
+    display: block;
+}

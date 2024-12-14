@@ -5,6 +5,21 @@ import { Question } from './question';
 let questions: Question[] = [];
 
 document.getElementById('validateImport')!.addEventListener('click', handleFileImport);
+
+const dropZone = document.querySelector('.drop-zone') as HTMLElement;
+dropZone.addEventListener('dragover', handleDragOver);
+dropZone.addEventListener('drop', handleFileDrop);
+const fileInput = document.getElementById('csvFile') as HTMLInputElement;
+
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files![0];
+    if (file) {
+        displayFileName(file.name);
+    }
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+
 document.getElementById('startQuiz')!.addEventListener('click', startQuiz);
 document.getElementById('prevBtn')!.addEventListener('click', showPreviousQuestion);
 document.getElementById('nextBtn')!.addEventListener('click', showNextQuestion);
@@ -23,6 +38,7 @@ function handleFileImport(): void {
         document.getElementById('fileStatus')!.innerHTML = `<span class="error">✗ Extension de fichier incorrecte</span>`;
         return;
     }
+    displayFileName(file.name);
     const reader = new FileReader();
     reader.onload = function(event: ProgressEvent<FileReader>) {
         try {
@@ -31,15 +47,38 @@ function handleFileImport(): void {
             displayFormatPreview();
             showStep(2);
         } catch (error) {
-            document.getElementById('fileStatus')!.innerHTML = `<span class="error">✗ ${(error as Error).message}</span>`;
+            document.getElementById('errors')!.innerHTML = `<span class="error">✗ ${(error as Error).message}</span>`;
         }
     };
 
     reader.onerror = function() {
-        document.getElementById('fileStatus')!.innerHTML = '<span class="error">✗ Erreur lors de la lecture du fichier</span>';
+        document.getElementById('errors')!.innerHTML = '<span class="error">✗ Erreur lors de la lecture du fichier</span>';
     };
 
     reader.readAsText(file);
+}
+
+function handleDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'copy';
+}
+
+function handleFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    const file = event.dataTransfer!.files[0];
+    if (!file.name.endsWith('.csv')) {
+        document.getElementById('fileStatus')!.innerHTML = `<span class="error">✗ Extension de fichier incorrecte</span>`;
+        return;
+    }
+    const fileInput = document.getElementById('csvFile') as HTMLInputElement;
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    displayFileName(file.name);
+}
+
+function displayFileName(fileName: string): void {
+    document.getElementById('fileStatus')!.innerHTML = `<span class="success">✓ Fichier sélectionné : ${fileName}</span>`;
 }
 
 function displayFormatPreview(): void {

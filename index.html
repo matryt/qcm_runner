@@ -12,10 +12,14 @@
     <p>Format attendu: question,option1,option2,option3,option4,réponses_correctes</p>
     <p>Note: Pour les réponses correctes multiples, séparez-les par des points-virgules</p>
     <div class="import-controls">
-        <input type="file" id="csvFile" accept=".csv">
+        <div class="drop-zone">
+            Déposez un fichier CSV ici ou cliquez pour sélectionner
+            <input type="file" id="csvFile" style="display: none;" accept=".csv">
+            <div id="fileStatus" class="file-status"></div>
+        </div>
         <button id="validateImport">Valider l'import</button>
     </div>
-    <div id="fileStatus" class="file-status"></div>
+    <div id="errors"></div>
 </div>
 
 <div id="step2" class="step notDisplayed">
@@ -64,8 +68,10 @@
 
 <div id="step4" class="step notDisplayed">
     <h2>Étape 4: Résultats</h2>
-    <div id="quizFeedback" class="quizFeedback"></div>
-    <button id="restartBtn">Recommencer</button>
+    <div id="quizFeedback" class="quizFeedback">
+    </div>
+    <p>Merci d'avoir participé au quiz !</p>
+    <button id="restartBtn">Restart</button>
 </div>
 
 <script src="dist/script.js" type="module"></script>

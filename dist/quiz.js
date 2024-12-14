@@ -170,6 +170,11 @@ export function submitAnswer() {
     updateQuestionNav();
     updateTotalScore();
 }
+function toggleQuestionDetails(index) {
+    var _a;
+    const details = document.getElementById(`question-details-${index}`);
+    (_a = details === null || details === void 0 ? void 0 : details.parentElement) === null || _a === void 0 ? void 0 : _a.classList.toggle('open');
+}
 function updateTotalScore() {
     const totalScore = session.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
     const maxPossibleScore = parseFloat(document.getElementById('totalPoints').value);
@@ -183,39 +188,39 @@ export function finishQuiz() {
     const maxPossibleScore = parseFloat(document.getElementById('totalPoints').value);
     const percentage = (totalScore / maxPossibleScore) * 100;
     const feedbackContainer = document.getElementById('quizFeedback');
-    feedbackContainer.innerHTML = `
-    <h2>Feedback du Quiz</h2>
-    <p>Score total : ${totalScore.toFixed(2)}/${maxPossibleScore} (${percentage.toFixed(1)}%)</p>
-    <div class="feedback-questions">
-      ${session.questions.map((q, index) => {
+    // @ts-ignore
+    feedbackContainer.innerHTML = session.questions.map((q, index) => {
         var _a;
         return `
-        <div class="feedback-question">
-          <button class="feedback-question-toggle" data-index="${index}">
-            &#9654; Question ${index + 1}: ${q.question}
-          </button>
-          <div class="feedback-question-details notDisplayed" id="feedback-details-${index}">
-            <p>Vos réponses : ${session.answers[index].userAnswers.join(', ')}</p>
-            <p>Réponses correctes : ${q.correctAnswers.join(', ')}</p>
-            <p>Score : ${((_a = session.answers[index].score) === null || _a === void 0 ? void 0 : _a.toFixed(2)) || 0}/${(q.correctAnswers.length * session.pointsPerCorrectAnswer).toFixed(2)}</p>
-          </div>
+        <div class="feedback-question" id="feedback-question-${index}">
+            <div class="question-title">
+            Question ${index + 1}
+            <span class="toggle-icon" id="toggle-icon-${index}">▼</span>
+            </div>
+            <div class="question-score">Score: ${((_a = session.answers[index].score) === null || _a === void 0 ? void 0 : _a.toFixed(2)) || 0}/${(q.correctAnswers.length * session.pointsPerCorrectAnswer).toFixed(2)}</div>
+            <div class="question-details" id="question-details-${index}">
+                <p>${q.question}</p>
+                <p>
+                <strong>Réponses choisies:</strong>
+                ${session.answers[index].userAnswers.length > 0 ? `<ul>${session.answers[index].userAnswers.map(answer => `<li>${answer}</li>`).join('')}</ul>` : 'aucune'}</p>
+                <p><strong>Réponses correctes:</strong></p>
+                <ul>
+                    ${q.correctAnswers.map(answer => `<li>${answer}</li>`).join('')}
+                </ul>
+            </div>
         </div>
-      `;
-    }).join('')}
-    </div>
-    <p>Merci d'avoir participé au quiz !</p>
-  `;
-    feedbackContainer.classList.remove('notDisplayed');
-    document.querySelectorAll('.feedback-question-toggle').forEach(button => {
-        button.addEventListener('click', () => {
-            const index = parseInt(button.getAttribute('data-index'), 10);
-            const details = document.getElementById(`feedback-details-${index}`);
-            details.classList.toggle('notDisplayed');
-            button.innerHTML = details.classList.contains('notDisplayed')
-                ? `&#9654; Question ${index + 1}: ${session.questions[index].question}`
-                : `&#9660; Question ${index + 1}: ${session.questions[index].question}`;
+    `;
+    }).join('');
+    session.questions.forEach((_, index) => {
+        const questionElement = document.getElementById(`feedback-question-${index}`);
+        const toggleIcon = document.getElementById(`toggle-icon-${index}`);
+        questionElement === null || questionElement === void 0 ? void 0 : questionElement.addEventListener('click', () => {
+            toggleQuestionDetails(index);
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '▶' : '▼';
         });
     });
+    // @ts-ignore
+    feedbackContainer.classList.remove('notDisplayed');
 }
 function getFeedbackClass(state) {
     switch (state) {
